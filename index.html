@@ -316,18 +316,17 @@ function queuedAV(fn){
 async function fetchBars(ticker){
   const errors = [];
 
-  // ── 1. Local Python server (instant fail on https:// pages, works locally) ──
+  // ── 1. GitHub Pages static JSON (auto-updated every 30 min by Actions) ────
   try{
-    const url = `http://localhost:8765/api/bars/${ticker}`;
-    const r = await fetchT(url, 3000);
+    const url = `/data/${ticker.toLowerCase()}.json`;
+    const r = await fetch(url);
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
     const j = await r.json();
-    if(j.error) throw new Error(j.error);
     if(!j.bars || j.bars.length < 80) throw new Error(`only ${j.bars?.length||0} bars`);
     const bars = j.bars.map(b=>({date:new Date(b.date),open:b.open,high:b.high,low:b.low,close:b.close}));
-    console.log(`${ticker}: local server ✓ (${bars.length} bars)`);
+    console.log(`${ticker}: static JSON ✓ (${bars.length} bars, updated ${j.updated?.slice(0,16)})`);
     return bars;
-  }catch(e){ errors.push('Local: '+e.message); }
+  }catch(e){ errors.push('JSON: '+e.message); }
 
   // ── 2. Yahoo Finance — query1 then query2 ────────────────────────────────
   for(const host of ['query1','query2']){
@@ -602,7 +601,7 @@ async function init(){
 
   const now=new Date();
   document.getElementById('last-update').textContent='Refreshed '+now.toLocaleTimeString()+' · '+now.toLocaleDateString();
-  document.getElementById('footer-ts').textContent='Strategy: Ichimoku Full Bull + ADX>25 + DI+>DI− · ATM CALL 35 DTE · Stop −50% · Target +100% · Time exit ≤2 days · OHLC: TwelveData → Yahoo → Alpha Vantage · Options: Yahoo Finance';
+  document.getElementById('footer-ts').textContent='Strategy: Ichimoku Full Bull + ADX>25 + DI+>DI− · ATM CALL 35 DTE · Stop −50% · Target +100% · Time exit ≤2 days · OHLC: GitHub Actions (yfinance, 30-min refresh) · Options: Yahoo Finance';
 }
 
 init();
