@@ -259,7 +259,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <li><span class="rn">2</span><strong>Enter</strong> only when all 5 conditions are &#10003;: price above cloud, Tenkan &gt; Kijun, Chikou clear, ADX &gt; 25, DI+ &gt; DI&#8722;.</li>
     <li><span class="rn">3</span><strong>Buy</strong> ATM CALL, nearest expiry ~35 DTE (Friday). One contract = one trade unit.</li>
     <li><span class="rn">4</span><strong>Stop</strong>: Exit immediately if the option drops &#8722;50% from your entry price. No exceptions.</li>
-    <li><span class="rn">5</span><strong>Target</strong>: Close at +100% (double your entry). Don't get greedy.</li>
+    <li><span class="rn">5</span><strong>Trail stop</strong>: Exit at next open when the stock closes below [highest close since entry − N×ATR14]. Multipliers: SPY/QQQ/GOOGL 3×, AMD 2.5×, GLD 1.5×, MSFT 1×. Dashboard shows today's exact exit level.</li>
     <li><span class="rn">6</span><strong>Time exit</strong>: Close the trade when &#8804; 2 trading days remain on the option, regardless of P&amp;L.</li>
     <li><span class="rn">7</span>No signal = no trade. You can hold an existing position while signal stays active.</li>
   </ul>
@@ -469,7 +469,7 @@ async function init(){
   await Promise.all(TICKERS.map(t=>processTicker(t)));
   const now=new Date();
   document.getElementById('last-update').textContent='Refreshed '+now.toLocaleTimeString()+' · '+now.toLocaleDateString();
-  document.getElementById('footer-ts').textContent='Strategy: Ichimoku Full Bull + ADX>25 + DI+>DI− · ATM CALL 35 DTE · Stop −50% · Target +100% · Time exit ≤2 days · OHLC: GitHub Actions (yfinance) · Options: Yahoo Finance';
+  document.getElementById('footer-ts').textContent='Strategy: Ichimoku Full Bull + ADX>25 + DI+>DI− · ATM CALL 35 DTE · Hard stop −50% · ATR trailing stop (per-ticker multiplier) · Time exit ≤2 days · OHLC: GitHub Actions (yfinance) · Options: Yahoo Finance';
 }
 init();
 </script>
