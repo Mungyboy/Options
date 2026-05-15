@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Morning Signal Tracker — SPY · QQQ · MSFT · GLD · GOOGL · AMD</title>
+<title>Morning Signal Tracker — SPY · QQQ · MSFT · GLD · NVDA · SMH · AMD</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; padding: 24px 20px 40px; }
@@ -128,6 +128,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="sum-status waiting" id="status-SMH">Loading&#8230;</div>
     <div class="sum-conds"          id="conds-SMH"></div>
     <div class="sum-since"          id="since-SMH"></div>
+  <div class="sum-card loading" id="sum-AMD" onclick="scrollTo('sec-AMD')">
+    <div class="sum-ticker"><div class="dot loading" id="dot-AMD"></div>AMD</div>
+    <div class="sum-price" id="price-AMD">&#8212;</div>
+    <div class="sum-chg"   id="chg-AMD"></div>
+    <div class="sum-status waiting" id="status-AMD">Loading&#8230;</div>
+    <div class="sum-conds"          id="conds-AMD"></div>
+    <div class="sum-since"          id="since-AMD"></div>
   </div>
   <div class="detail-grid">
     <div class="card"><div class="card-title">Signal Conditions</div><div id="cond-detail-SPY"><div class="loading-txt">Loading&#8230;</div></div></div>
