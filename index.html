@@ -128,6 +128,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="sum-status waiting" id="status-SMH">Loading&#8230;</div>
     <div class="sum-conds"          id="conds-SMH"></div>
     <div class="sum-since"          id="since-SMH"></div>
+  </div>
   <div class="sum-card loading" id="sum-AMD" onclick="scrollTo('sec-AMD')">
     <div class="sum-ticker"><div class="dot loading" id="dot-AMD"></div>AMD</div>
     <div class="sum-price" id="price-AMD">&#8212;</div>
@@ -135,6 +136,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="sum-status waiting" id="status-AMD">Loading&#8230;</div>
     <div class="sum-conds"          id="conds-AMD"></div>
     <div class="sum-since"          id="since-AMD"></div>
+  </div>
+</div>
+
+<div id="sec-SPY" class="ticker-section">
+  <div class="section-header"><span class="ticker-badge">SPY</span><div class="section-line"></div></div>
+  <div class="trade-desk" id="td-SPY">
+    <div class="td-title">&#9658; TODAY'S TRADE &#8212; SPY</div>
+    <div class="entry-timing"><div class="et-icon">&#9200;</div><div class="et-body"><div class="et-title">WHEN TO BUY</div><div class="et-text">Check this tracker <strong style="color:#c9d1d9">after market close (4 PM ET)</strong> or pre-market. If signal is active and you have no open position &#8594; <strong style="color:#c9d1d9">buy at tomorrow's open (9:30&#8211;9:45 AM ET)</strong>. Already holding? No new entry &#8212; manage existing trade.</div></div></div>
+    <div class="td-grid">
+      <div class="td-item"><div class="td-key">Instrument</div><div class="td-val green" id="td-inst-SPY">&#8212;</div></div>
+      <div class="td-item"><div class="td-key">Expiry (~35 DTE)</div><div class="td-val blue" id="td-exp-SPY">&#8212;</div></div>
+      <div class="td-item"><div class="td-key">Signal active since</div><div class="td-val blue" id="td-since-SPY">&#8212;</div></div>
+      <div class="td-item"><div class="td-key">Option last price</div><div class="td-val" id="td-opt-SPY"><span class="loading-txt">fetching&#8230;</span></div></div>
+      <div class="td-item"><div class="td-key">Capital (1 contract)</div><div class="td-val" id="td-cap-SPY">&#8212;</div><div class="td-note">&#215; contracts = your position size</div></div>
+      <div class="td-item"><div class="td-key">Stop loss (&#8722;50%)</div><div class="td-val stop" id="td-stop-SPY">&#8212;</div><div class="td-note">Exit immediately if hit</div></div>
+      <div class="td-item"><div class="td-key">Trail stop (4.0&#215;ADR)</div><div class="td-val" id="td-tgt-SPY">&#8212;</div><div class="td-note">Exit next open if stock closes below this</div></div>
+      <div class="td-item"><div class="td-key">Time exit</div><div class="td-val" style="color:#c9d1d9;font-size:13px">Close when &#8804; 2 trading days left</div></div>
+    </div>
   </div>
   <div class="detail-grid">
     <div class="card"><div class="card-title">Signal Conditions</div><div id="cond-detail-SPY"><div class="loading-txt">Loading&#8230;</div></div></div>
