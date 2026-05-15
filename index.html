@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Morning Signal Tracker — SPY · QQQ · MSFT · GLD · GOOGL · AMD</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; padding: 24px 20px 40px; }
+.top-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; }
+.top-bar h1 { font-size:18px; font-weight:700; color:#e6edf3; }
+.top-bar h1 span { color:#58a6ff; }
+.top-meta { font-size:11px; color:#6e7681; margin-top:3px; }
+.refresh-btn { background:#21262d; border:1px solid #30363d; color:#c9d1d9; padding:6px 16px; border-radius:6px; cursor:pointer; font-size:13px; }
+.refresh-btn:hover { background:#30363d; }
+.summary-strip { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+.sum-card { border-radius:10px; padding:18px 20px; border:1px solid #30363d; background:#161b22; cursor:pointer; transition:border-color .2s; }
+.sum-card:hover { border-color:#58a6ff44; }
+.sum-card.active  { background:linear-gradient(135deg,#0d2818,#0f3320); border-color:#238636; }
+.sum-card.waiting { background:#161b22; border-color:#30363d; }
+.sum-card.loading { background:#161b22; border-color:#21262d; }
+.sum-ticker { font-size:13px; font-weight:700; color:#8b949e; letter-spacing:.5px; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+.sum-price  { font-size:24px; font-weight:700; color:#e6edf3; }
+.sum-chg    { font-size:12px; margin-top:2px; }
+.sum-chg.up { color:#3fb950; } .sum-chg.down { color:#f85149; }
+.sum-status { font-size:13px; font-weight:700; margin-top:10px; }
+.sum-status.active  { color:#3fb950; }
+.sum-status.waiting { color:#6e7681; }
+.sum-conds  { font-size:11px; color:#8b949e; margin-top:3px; }
+.sum-since  { font-size:11px; color:#3fb950; margin-top:5px; font-weight:600; }
+.sum-since.old { color:#e3b341; }
+.dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+.dot.active  { background:#3fb950; box-shadow:0 0 8px #3fb95077; animation:pulse 2s infinite; }
+.dot.waiting { background:#484f58; }
+.dot.loading { background:#30363d; }
+@keyframes pulse { 0%,100%{box-shadow:0 0 6px #3fb95066}50%{box-shadow:0 0 16px #3fb950bb} }
+.ticker-section { margin-bottom:24px; }
+.section-header { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.section-header .ticker-badge { font-size:13px; font-weight:700; background:#21262d; border:1px solid #30363d; color:#c9d1d9; padding:3px 10px; border-radius:20px; }
+.section-header .section-line { flex:1; height:1px; background:#21262d; }
+.trade-desk { background:linear-gradient(135deg,#0d2818,#0f3320); border:1px solid #238636; border-radius:10px; padding:18px 20px; margin-bottom:12px; display:none; }
+.trade-desk.visible { display:block; }
+.td-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:#3fb950; margin-bottom:14px; }
+.td-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.entry-timing { background:#0d1f38; border:1px solid #1f4b8e; border-radius:8px; padding:12px 16px; margin-bottom:14px; display:flex; align-items:flex-start; gap:12px; }
+.entry-timing .et-icon { font-size:18px; flex-shrink:0; }
+.entry-timing .et-body { flex:1; }
+.entry-timing .et-title { font-size:12px; font-weight:700; color:#58a6ff; margin-bottom:3px; }
+.entry-timing .et-text  { font-size:12px; color:#8b949e; line-height:1.5; }
+.td-key { font-size:11px; color:#8b949e; margin-bottom:3px; }
+.td-val { font-size:15px; font-weight:700; color:#e6edf3; }
+.td-val.green  { color:#3fb950; font-size:17px; }
+.td-val.stop   { color:#f85149; }
+.td-val.target { color:#3fb950; }
+.td-val.blue   { color:#58a6ff; }
+.td-note { font-size:11px; color:#6e7681; margin-top:2px; }
+.detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media(max-width:680px){ .detail-grid,.td-grid,.summary-strip{ grid-template-columns:1fr; } }
+.card { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:16px 18px; }
+.card-title { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.8px; color:#8b949e; margin-bottom:12px; }
+.cond-row { display:flex; align-items:flex-start; gap:10px; padding:8px 0; border-bottom:1px solid #21262d; }
+.cond-row:last-child { border-bottom:none; padding-bottom:0; }
+.cond-row:first-child { padding-top:0; }
+.cicon { width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; flex-shrink:0; margin-top:1px; }
+.cicon.pass { background:#0d2818; border:1.5px solid #238636; color:#3fb950; }
+.cicon.fail { background:#2d1414; border:1.5px solid #6e2626; color:#f85149; }
+.cname { font-size:12px; font-weight:600; color:#c9d1d9; }
+.cval  { font-size:11px; color:#8b949e; margin-top:1px; }
+.g { color:#3fb950; font-weight:600; }
+.r { color:#f85149; font-weight:600; }
+.w { color:#c9d1d9; font-weight:600; }
+.lrow { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #21262d; }
+.lrow:last-child { border-bottom:none; padding-bottom:0; }
+.lrow:first-child { padding-top:0; }
+.lname { font-size:12px; color:#8b949e; }
+.lval  { font-size:13px; font-weight:600; }
+.lval.up { color:#3fb950; } .lval.n { color:#c9d1d9; }
+.rules-card { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:18px 20px; margin-bottom:16px; }
+.rules-list { list-style:none; }
+.rules-list li { display:flex; gap:10px; padding:6px 0; border-bottom:1px solid #21262d; font-size:12px; color:#c9d1d9; }
+.rules-list li:last-child { border-bottom:none; }
+.rn { color:#58a6ff; font-weight:700; flex-shrink:0; width:16px; }
+.stats-bar { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px; }
+.stat-card { background:#161b22; border:1px solid #30363d; border-radius:8px; padding:12px 16px; }
+.stat-ticker { font-size:11px; font-weight:700; color:#8b949e; letter-spacing:.5px; margin-bottom:6px; }
+.stat-row { display:flex; justify-content:space-between; font-size:12px; padding:2px 0; }
+.stat-key { color:#6e7681; }
+.stat-val { font-weight:600; }
+.stat-val.g { color:#3fb950; } .stat-val.r { color:#f85149; }
+.footer-note { font-size:11px; color:#6e7681; text-align:center; margin-top:8px; }
+.loading-txt { font-size:12px; color:#6e7681; font-style:italic; }
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <div>
+    <h1>Morning Signal Tracker <span>Ichimoku + ADX</span></h1>
+    <div class="top-meta" id="last-update">Loading&#8230;</div>
+  </div>
+  <button class="refresh-btn" onclick="init()">&#8635; Refresh</button>
+</div>
+
+<div class="summary-strip">
+  <div class="sum-card loading" id="sum-SPY" onclick="scrollTo('sec-SPY')"><div class="sum-ticker"><div class="dot loading" id="dot-SPY"></div>SPY</div><div class="sum-price" id="price-SPY">&#8212;</div><div class="sum-chg" id="chg-SPY"></div><div class="sum-status waiting" id="status-SPY">Loading&#8230;</div><div class="sum-conds" id="conds-SPY"></div><div class="sum-since" id="since-SPY"></div></div>
+  <div class="sum-card loading" id="sum-QQQ" onclick="scrollTo('sec-QQQ')"><div class="sum-ticker"><div class="dot loading" id="dot-QQQ"></div>QQQ</div><div class="sum-price" id="price-QQQ">&#8212;</div><div class="sum-chg" id="chg-QQQ"></div><div class="sum-status waiting" id="status-QQQ">Loading&#8230;</div><div class="sum-conds" id="conds-QQQ"></div><div class="sum-since" id="since-QQQ"></div></div>
+  <div class="sum-card loading" id="sum-MSFT" onclick="scrollTo('sec-MSFT')"><div class="sum-ticker"><div class="dot loading" id="dot-MSFT"></div>MSFT</div><div class="sum-price" id="price-MSFT">&#8212;</div><div class="sum-chg" id="chg-MSFT"></div><div class="sum-status waiting" id="status-MSFT">Loading&#8230;</div><div class="sum-conds" id="conds-MSFT"></div><div class="sum-since" id="since-MSFT"></div></div>
+  <div class="sum-card loading" id="sum-GLD" onclick="scrollTo('sec-GLD')"><div class="sum-ticker"><div class="dot loading" id="dot-GLD"></div>GLD</div><div class="sum-price" id="price-GLD">&#8212;</div><div class="sum-chg" id="chg-GLD"></div><div class="sum-status waiting" id="status-GLD">Loading&#8230;</div><div class="sum-conds" id="conds-GLD"></div><div class="sum-since" id="since-GLD"></div></div>
+  <div class="sum-card loading" id="sum-GOOGL" onclick="scrollTo('sec-GOOGL')"><div class="sum-ticker"><div class="dot loading" id="dot-GOOGL"></div>GOOGL</div><div class="sum-price" id="price-GOOGL">&#8212;</div><div class="sum-chg" id="chg-GOOGL"></div><div class="sum-status waiting" id="status-GOOGL">Loading&#8230;</div><div class="sum-conds" id="conds-GOOGL"></div><div class="sum-since" id="since-GOOGL"></div></div>
+  <div class="sum-card loading" id="sum-AMD" onclick="scrollTo('sec-AMD')"><div class="sum-ticker"><div class="dot loading" id="dot-AMD"></div>AMD</div><div class="sum-price" id="price-AMD">&#8212;</div><div class="sum-chg" id="chg-AMD"></div><div class="sum-status waiting" id="status-AMD">Loading&#8230;</div><div class="sum-conds" id="conds-AMD"></div><div class="sum-since" id="since-AMD"></div></div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-card"><div class="stat-ticker">SPY &#8212; 2yr backtest</div><div class="stat-row"><span class="stat-key">Win rate</span><span class="stat-val g">54.8%</span></div><div class="stat-row"><span class="stat-key">Total P&amp;L</span><span class="stat-val g">+$24,947</span></div><div class="stat-row"><span class="stat-key">Trades / avg cap</span><span class="stat-val">93 &#183; $1,538</span></div><div class="stat-row"><span class="stat-key">Avg win / loss</span><span class="stat-val">+$963 / <span class="r">&#8722;$575</span></span></div></div>
+  <div class="stat-card"><div class="stat-ticker">QQQ &#8212; 2yr backtest</div><div class="stat-row"><span class="stat-key">Win rate</span><span class="stat-val g">69.6%</span></div><div class="stat-row"><span class="stat-key">Total P&amp;L</span><span class="stat-val g">+$68,104</span></div><div class="stat-row"><span class="stat-key">Trades / avg cap</span><span class="stat-val">79 &#183; $1,406</span></div><div class="stat-row"><span class="stat-key">Avg win / loss</span><span class="stat-val">+$1,526 / <span class="r">&#8722;$659</span></span></div></div>
+  <div class="stat-card"><div class="stat-ticker">MSFT &#8212; 2yr backtest</div><div class="stat-row"><span class="stat-key">Win rate</span><span class="stat-val g">75.4%</span></div><div class="stat-row"><span class="stat-key">Total P&amp;L</span><span class="stat-val g">+$68,069</span></div><div class="stat-row"><span class="stat-key">Trades / avg cap</span><span class="stat-val">69 &#183; $1,174</span></div><div class="stat-row"><span class="stat-key">Avg win / loss</span><span class="stat-val">+$1,544 / <span class="r">&#8722;$719</span></span></div></div>
+  <div class="stat-card"><div class="stat-ticker">GLD &#8212; 2yr backtest</div><div class="stat-row"><span class="stat-key">Win rate</span><span class="stat-val g">64.2%</span></div><div class="stat-row"><span class="stat-key">Total P&amp;L</span><span class="stat-val g">+$70,772</span></div><div class="stat-row"><span class="stat-key">Trades / avg cap</span><span class="stat-val">190 &#183; $806</span></div><div class="stat-row"><span class="stat-key">Avg win / loss</span><span class="stat-val">+$899 / <span class="r">&#8722;$571</span></span></div></div>
+  <div class="stat-card"><div class="stat-ticker">GOOGL &#8212; 2yr backtest</div><div class="stat-row"><span class="stat-key">Win rate</span><span class="stat-val g">48.9%</span></div><div class="stat-row"><span class="stat-key">Total P&amp;L</span><span class="stat-val g">+$67,220</span></div><div class="stat-row"><span class="stat-key">Trades / avg cap</span><span class="stat-val">178 &#183; $577</span></div><div class="stat-row"><span class="stat-key">Avg win / loss</span><span class="stat-val">+$1,137 / <span class="r">&#8722;$348</span></span></div></div>
+  <div class="stat-card"><div class="stat-ticker">AMD &#8212; 2yr backtest</div><div class="stat-row"><span class="stat-key">Win rate</span><span class="stat-val g">49.3%</span></div><div class="stat-row"><span class="stat-key">Total P&amp;L</span><span class="stat-val g">+$58,199</span></div><div class="stat-row"><span class="stat-key">Trades / avg cap</span><span class="stat-val">142 &#183; $491</span></div><div class="stat-row"><span class="stat-key">Avg win / loss</span><span class="stat-val">+$1,187 / <span class="r">&#8722;$346</span></span></div></div>
+</div>
+<div id="sec-SPY" class="ticker-section">
+  <div class="section-header"><span class="ticker-badge">SPY</span><div class="section-line"></div></div>
+  <div class="trade-desk" id="td-SPY">
+    <div class="td-title">&#9658; TODAY'S TRADE &#8212; SPY</div>
+    <div class="entry-timing"><div class="et-icon">&#9200;</div><div class="et-body"><div class="et-title">WHEN TO BUY</div><div class="et-text">Check this tracker <strong style="color:#c9d1d9">after market close (4 PM ET)</strong> or pre-market. If signal is active and you have no open position &#8594; <strong style="color:#c9d1d9">buy at tomorrow's open (9:30&#8211;9:45 AM ET)</strong>. Already holding? No new entry &#8212; manage existing trade.</div></div></div>
+    <div class="td-grid">
+      <div class="td-item"><div class="td-key">Instrument</div><div class="td-val green" id="td-inst-SPY">&#8212;</div></div>
+      <div class="td-item"><div class="td-key">Expiry (~35 DTE)</div><div class="td-val blue" id="td-exp-SPY">&#8212;</div></div>
+      <div class="td-item"><div class="td-key">Signal active since</div><div class="td-val blue" id="td-since-SPY">&#8212;</div></div>
+      <div class="td-item"><div class="td-key">Option last price</div><div class="td-val" id="td-opt-SPY"><span class="loading-txt">fetching&#8230;</span></div></div>
+      <div class="td-item"><div class="td-key">Capital (1 contract)</div><div class="td-val" id="td-cap-SPY">&#8212;</div><div class="td-note">&#215; contracts = your position size</div></div>
+      <div class="td-item"><div class="td-key">Stop loss (&#8722;50%)</div><div class="td-val stop" id="td-stop-SPY">&#8212;</div><div class="td-note">Exit immediately if hit</div></div>
+      <div class="td-item"><div class="td-key">Target (+100%)</div><div class="td-val target" id="td-tgt-SPY">&#8212;</div><div class="td-note">Take full profit</div></div>
+      <div class="td-item"><div class="td-key">Time exit</div><div class="td-val" style="color:#c9d1d9;font-size:13px">Close when &#8804; 2 trading days left</div></div>
+    </div>
+  </div>
+  <div class="detail-grid">
+    <div class="card"><div class="card-title">Signal Conditions</div><div id="cond-detail-SPY"><div class="loading-txt">Loading&#8230;</div></div></div>
+    <div class="card"><div class="card-title">Key Levels</div><div id="levels-SPY"><div class="loading-txt">Loading&#8230;</div></div></div>
+  </div>
+</div>
+<div id="sec-QQQ" class="ticker-section">
+  <div class="section-header"><span class="ticker-badge">QQQ</span><div class="section-line"></div></div>
+  <div class="trade-desk" id="td-QQQ">
+    <div class="td-title">&#9658; TODAY'S TRADE &#8212; QQQ</div>
+    <div class="entry-timing"><div class="et-icon">&#9200;</div><div class="et-body"><div class="et-title">WHEN TO BUY</div><div class="et-text">Check this tracker <strong style="color:#c9d1d9">after market close (4 PM ET)</strong> or pre-market. If signal is active and you have no open position &#8594; <strong style="color:#c9d1d9">buy at tomorrow's open (9:30&#8211;9:45 AM ET)</strong>. Already holding? No new entry &#8212; manage existing trade.</div></div></div>
+    <div class="td-grid">
+      <div class="td-item"><div class="td-key">Instrument</div><div class="td-val green" id="td-inst-QQQ">&#8212;</div></div>
+      <div class="td-item"><div class="td-key">Expiry (~35 DTE)</div><div class="td-val blue" id="td-exp-QQQ">&#8212;</div></div>
+      <div class="td-item"><div class="td-key">Signal active since</div><div class="td-val blue" id="td-since-QQQ">&#8212;</div></div>
+      <div class="td-item"><div class="td-key">Option last price</div><div class="td-val" id="td-opt-QQQ"><span class="loading-txt">fetching&#8230;</span></div></div>
+      <div class="td-item"><div class="td-key">Capital (1 contract)</div><div class="td-val" id="td-cap-QQQ">&#8212;</div><div class="td-note">&#215; contracts = your position size</div></div>
+      <div class="td-item"><div class="td-key">Stop loss (&#8722;50%)</div><div class="td-val stop" id="td-stop-QQQ">&#8212;</div><div class="td-note">Exit immediately if hit</div></div>
+      <div class="td-item"><div class="td-key">Target (+100%)</div><div class="td-val target" id="td-tgt-QQQ">&#8212;</div><div class="td-note">Take full profit</div></div>
+      <div class="td-item"><div class="td-key">Time exit</div><div class="td-val" style="color:#c9d1d9;font-size:13px">Close when &#8804; 2 trading days left</div></div>
+    </div>
+  </div>
+  <div class="detail-grid">
+    <div class="card"><div class="card-title">Signal Conditions</div><div id="cond-detail-QQQ"><div class="loading-txt">Loading&#8230;</div></div></div>
+    <div class="card"><div class="card-title">Key Levels</div><div id="levels-QQQ"><div class="loading-txt">Loading&#8230;</div></div></div>
+  </div>
+</div>
+<div id="sec-MSFT" class="ticker-section">
+  <div class="section-header"><span class="ticker-badge">MSFT</span><div class="section-line"></div></div>
+  <div class="trade-desk" id="td-MSFT">
+    <div class="td-title">&#9658; TODAY'S TRADE &#8212; MSFT</div>
+    <div class="entry-timing"><div class="et-icon">&#9200;</div><div class="et-body"><div class="et-title">WHEN TO BUY</div><div class="et-text">Check this tracker <strong style="color:#c9d1d9">after market close (4 PM ET)</strong> or pre-market. If signal is active and you have no open position &#8594; <strong style="color:#c9d1d9">buy at tomorrow's open (9:30&#8211;9:45 AM ET)</strong>. Already holding? No new entry &#8212; manage existing trade.</div></div></div>
+    <div class="td-grid">
+      <div class="td-item"><div class="td-key">Instrument</div><div class="td-val green" id="td-inst-MSFT">&#8212;</div></div>
+      <div class="td-item"><div class="td-key">Expiry (~35 DTE)</div><div class="td-val blue" id="td-exp-MSFT">&#8212;</div></div>
+      <div class="td-item"><div class="td-key">Signal active since</div><div class="td-val blue" id="td-since-MSFT">&#8212;</div></div>
+      <div class="td-item"><div class="td-key">Option last price</div><div class="td-val" id="td-opt-MSFT"><span class="loading-txt">fetching&#8230;</span></div></div>
+      <div class="td-item"><div class="td-key">Capital (1 contract)</div><div class="td-val" id="td-cap-MSFT">&#8212;</div><div class="td-note">&#215; contracts = your position size</div></div>
+      <div class="td-item"><div class="td-key">Stop loss (&#8722;50%)</div><div class="td-val stop" id="td-stop-MSFT">&#8212;</div><div class="td-note">Exit immediately if hit</div></div>
+      <div class="td-item"><div class="td-key">Target (+100%)</div><div class="td-val target" id="td-tgt-MSFT">&#8212;</div><div class="td-note">Take full profit</div></div>
+      <div class="td-item"><div class="td-key">Time exit</div><div class="td-val" style="color:#c9d1d9;font-size:13px">Close when &#8804; 2 trading days left</div></div>
+    </div>
+  </div>
+  <div class="detail-grid">
+    <div class="card"><div class="card-title">Signal Conditions</div><div id="cond-detail-MSFT"><div class="loading-txt">Loading&#8230;</div></div></div>
+    <div class="card"><div class="card-title">Key Levels</div><div id="levels-MSFT"><div class="loading-txt">Loading&#8230;</div></div></div>
+  </div>
+</div>
+<div id="sec-GLD" class="ticker-section">
+  <div class="section-header"><span class="ticker-badge">GLD</span><div class="section-line"></div></div>
+  <div class="trade-desk" id="td-GLD">
+    <div class="td-title">&#9658; TODAY'S TRADE &#8212; GLD</div>
+    <div class="entry-timing"><div class="et-icon">&#9200;</div><div class="et-body"><div class="et-title">WHEN TO BUY</div><div class="et-text">Check this tracker <strong style="color:#c9d1d9">after market close (4 PM ET)</strong> or pre-market. If signal is active and you have no open position &#8594; <strong style="color:#c9d1d9">buy at tomorrow's open (9:30&#8211;9:45 AM ET)</strong>. Already holding? No new entry &#8212; manage existing trade.</div></div></div>
+    <div class="td-grid">
+      <div class="td-item"><div class="td-key">Instrument</div><div class="td-val green" id="td-inst-GLD">&#8212;</div></div>
+      <div class="td-item"><div class="td-key">Expiry (~35 DTE)</div><div class="td-val blue" id="td-exp-GLD">&#8212;</div></div>
+      <div class="td-item"><div class="td-key">Signal active since</div><div class="td-val blue" id="td-since-GLD">&#8212;</div></div>
+      <div class="td-item"><div class="td-key">Option last price</div><div class="td-val" id="td-opt-GLD"><span class="loading-txt">fetching&#8230;</span></div></div>
+      <div class="td-item"><div class="td-key">Capital (1 contract)</div><div class="td-val" id="td-cap-GLD">&#8212;</div><div class="td-note">&#215; contracts = your position size</div></div>
+      <div class="td-item"><div class="td-key">Stop loss (&#8722;50%)</div><div class="td-val stop" id="td-stop-GLD">&#8212;</div><div class="td-note">Exit immediately if hit</div></div>
+      <div class="td-item"><div class="td-key">Target (+100%)</div><div class="td-val target" id="td-tgt-GLD">&#8212;</div><div class="td-note">Take full profit</div></div>
+      <div class="td-item"><div class="td-key">Time exit</div><div class="td-val" style="color:#c9d1d9;font-size:13px">Close when &#8804; 2 trading days left</div></div>
+    </div>
+  </div>
+  <div class="detail-grid">
+    <div class="card"><div class="card-title">Signal Conditions</div><div id="cond-detail-GLD"><div class="loading-txt">Loading&#8230;</div></div></div>
+    <div class="card"><div class="card-title">Key Levels</div><div id="levels-GLD"><div class="loading-txt">Loading&#8230;</div></div></div>
+  </div>
+</div>
+<div id="sec-GOOGL" class="ticker-section">
+  <div class="section-header"><span class="ticker-badge">GOOGL</span><div class="section-line"></div></div>
+  <div class="trade-desk" id="td-GOOGL">
+    <div class="td-title">&#9658; TODAY'S TRADE &#8212; GOOGL</div>
+    <div class="entry-timing"><div class="et-icon">&#9200;</div><div class="et-body"><div class="et-title">WHEN TO BUY</div><div class="et-text">Check this tracker <strong style="color:#c9d1d9">after market close (4 PM ET)</strong> or pre-market. If signal is active and you have no open position &#8594; <strong style="color:#c9d1d9">buy at tomorrow's open (9:30&#8211;9:45 AM ET)</strong>. Already holding? No new entry &#8212; manage existing trade.</div></div></div>
+    <div class="td-grid">
+      <div class="td-item"><div class="td-key">Instrument</div><div class="td-val green" id="td-inst-GOOGL">&#8212;</div></div>
+      <div class="td-item"><div class="td-key">Expiry (~35 DTE)</div><div class="td-val blue" id="td-exp-GOOGL">&#8212;</div></div>
+      <div class="td-item"><div class="td-key">Signal active since</div><div class="td-val blue" id="td-since-GOOGL">&#8212;</div></div>
+      <div class="td-item"><div class="td-key">Option last price</div><div class="td-val" id="td-opt-GOOGL"><span class="loading-txt">fetching&#8230;</span></div></div>
+      <div class="td-item"><div class="td-key">Capital (1 contract)</div><div class="td-val" id="td-cap-GOOGL">&#8212;</div><div class="td-note">&#215; contracts = your position size</div></div>
+      <div class="td-item"><div class="td-key">Stop loss (&#8722;50%)</div><div class="td-val stop" id="td-stop-GOOGL">&#8212;</div><div class="td-note">Exit immediately if hit</div></div>
+      <div class="td-item"><div class="td-key">Target (+100%)</div><div class="td-val target" id="td-tgt-GOOGL">&#8212;</div><div class="td-note">Take full profit</div></div>
+      <div class="td-item"><div class="td-key">Time exit</div><div class="td-val" style="color:#c9d1d9;font-size:13px">Close when &#8804; 2 trading days left</div></div>
+    </div>
+  </div>
+  <div class="detail-grid">
+    <div class="card"><div class="card-title">Signal Conditions</div><div id="cond-detail-GOOGL"><div class="loading-txt">Loading&#8230;</div></div></div>
+    <div class="card"><div class="card-title">Key Levels</div><div id="levels-GOOGL"><div class="loading-txt">Loading&#8230;</div></div></div>
+  </div>
+</div>
+<div id="sec-AMD" class="ticker-section">
+  <div class="section-header"><span class="ticker-badge">AMD</span><div class="section-line"></div></div>
+  <div class="trade-desk" id="td-AMD">
+    <div class="td-title">&#9658; TODAY'S TRADE &#8212; AMD</div>
+    <div class="entry-timing"><div class="et-icon">&#9200;</div><div class="et-body"><div class="et-title">WHEN TO BUY</div><div class="et-text">Check this tracker <strong style="color:#c9d1d9">after market close (4 PM ET)</strong> or pre-market. If signal is active and you have no open position &#8594; <strong style="color:#c9d1d9">buy at tomorrow's open (9:30&#8211;9:45 AM ET)</strong>. Already holding? No new entry &#8212; manage existing trade.</div></div></div>
+    <div class="td-grid">
+      <div class="td-item"><div class="td-key">Instrument</div><div class="td-val green" id="td-inst-AMD">&#8212;</div></div>
+      <div class="td-item"><div class="td-key">Expiry (~35 DTE)</div><div class="td-val blue" id="td-exp-AMD">&#8212;</div></div>
+      <div class="td-item"><div class="td-key">Signal active since</div><div class="td-val blue" id="td-since-AMD">&#8212;</div></div>
+      <div class="td-item"><div class="td-key">Option last price</div><div class="td-val" id="td-opt-AMD"><span class="loading-txt">fetching&#8230;</span></div></div>
+      <div class="td-item"><div class="td-key">Capital (1 contract)</div><div class="td-val" id="td-cap-AMD">&#8212;</div><div class="td-note">&#215; contracts = your position size</div></div>
+      <div class="td-item"><div class="td-key">Stop loss (&#8722;50%)</div><div class="td-val stop" id="td-stop-AMD">&#8212;</div><div class="td-note">Exit immediately if hit</div></div>
+      <div class="td-item"><div class="td-key">Target (+100%)</div><div class="td-val target" id="td-tgt-AMD">&#8212;</div><div class="td-note">Take full profit</div></div>
+      <div class="td-item"><div class="td-key">Time exit</div><div class="td-val" style="color:#c9d1d9;font-size:13px">Close when &#8804; 2 trading days left</div></div>
+    </div>
+  </div>
+  <div class="detail-grid">
+    <div class="card"><div class="card-title">Signal Conditions</div><div id="cond-detail-AMD"><div class="loading-txt">Loading&#8230;</div></div></div>
+    <div class="card"><div class="card-title">Key Levels</div><div id="levels-AMD"><div class="loading-txt">Loading&#8230;</div></div></div>
+  </div>
+</div>
+
+<div class="rules-card">
+  <div class="card-title">Strategy Rules &#8212; Quick Reference</div>
+  <ul class="rules-list">
+    <li><span class="rn">1</span>Open this tracker every morning before market open. All tickers are independent &#8212; trade each separately.</li>
+    <li><span class="rn">2</span><strong>Enter</strong> only when all 5 conditions are &#10003;: price above cloud, Tenkan &gt; Kijun, Chikou clear, ADX &gt; 25, DI+ &gt; DI&#8722;.</li>
+    <li><span class="rn">3</span><strong>Buy</strong> ATM CALL, nearest expiry ~35 DTE (Friday). One contract = one trade unit.</li>
+    <li><span class="rn">4</span><strong>Stop</strong>: Exit immediately if the option drops &#8722;50% from your entry price. No exceptions.</li>
+    <li><span class="rn">5</span><strong>Target</strong>: Close at +100% (double your entry). Don't get greedy.</li>
+    <li><span class="rn">6</span><strong>Time exit</strong>: Close the trade when &#8804; 2 trading days remain on the option, regardless of P&amp;L.</li>
+    <li><span class="rn">7</span>No signal = no trade. You can hold an existing position while signal stays active.</li>
+  </ul>
+</div>
+<div class="footer-note" id="footer-ts"></div>
+
+<script>
+const TICKERS=['SPY','QQQ','MSFT','GLD','GOOGL','AMD'];
+function fmt(n,d=2){return n==null?'—':n.toFixed(d);}
+function fmtD(n){return n==null?'—':'$'+n.toFixed(2);}
+function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r;}
+function fmtDate(d){return d.toISOString().slice(0,10);}
+function scrollTo(id){document.getElementById(id)?.scrollIntoView({behavior:'smooth',block:'start'});}
+function nearestFriday35(){let d=addDays(new Date(),28);while(d.getDay()!==5)d=addDays(d,1);const min=addDays(new Date(),28);while(d<min)d=addDays(d,7);return d;}
+const AV_KEY='L5RCL12BFNT39E8C';
+function fetchT(url,ms){const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),ms);return fetch(url,{signal:ctrl.signal}).finally(()=>clearTimeout(t));}
+let _avQueue=Promise.resolve();
+function queuedAV(fn){const r=_avQueue.then(fn);_avQueue=r.catch(()=>{}).then(()=>new Promise(res=>setTimeout(res,1400)));return r;}
+
+async function fetchBars(ticker){
+  const errors=[];
+  try{
+    const r=await fetch('data/'+ticker.toLowerCase()+'.json');
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const j=await r.json();
+    if(!j.bars||j.bars.length<80)throw new Error('only '+(j.bars?.length||0)+' bars');
+    const bars=j.bars.map(b=>({date:new Date(b.date),open:b.open,high:b.high,low:b.low,close:b.close}));
+    console.log(ticker+': JSON ✓ ('+bars.length+' bars, updated '+j.updated?.slice(0,16)+')');
+    return bars;
+  }catch(e){errors.push('JSON: '+e.message);}
+  for(const host of ['query1','query2']){
+    try{
+      const r=await fetchT('https://'+host+'.finance.yahoo.com/v8/finance/chart/'+ticker+'?interval=1d&range=730d',10000);
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      const j=await r.json();
+      const res=j?.chart?.result?.[0];
+      if(!res)throw new Error('no result');
+      const ts=res.timestamp,q=res.indicators?.quote?.[0];
+      if(!ts||!q)throw new Error('no OHLC');
+      const bars=ts.map((t,i)=>({date:new Date(t*1000),open:q.open[i],high:q.high[i],low:q.low[i],close:q.close[i]})).filter(b=>b.close&&b.high&&b.low);
+      if(bars.length>=80){console.log(ticker+': Yahoo('+host+') ✓');return bars;}
+      throw new Error('only '+bars.length+' bars');
+    }catch(e){errors.push('Yahoo('+host+'): '+e.message);}
+  }
+  return queuedAV(async()=>{
+    const r=await fetchT('https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol='+ticker+'&outputsize=compact&apikey='+AV_KEY,14000);
+    const j=await r.json();
+    if(j['Note']||j['Information'])throw new Error([...errors,'AV: rate limited'].join(' | '));
+    const ts=j['Time Series (Daily)'];
+    if(!ts)throw new Error([...errors,'AV: no data'].join(' | '));
+    const bars=Object.entries(ts).map(([d,v])=>({date:new Date(d),open:+v['1. open'],high:+v['2. high'],low:+v['3. low'],close:+v['4. close']})).filter(b=>b.close&&b.high&&b.low).sort((a,b)=>a.date-b.date);
+    if(bars.length>=80){return bars;}
+    throw new Error([...errors,'AV: only '+bars.length+' bars'].join(' | '));
+  });
+}
+
+function calcIchimoku(bars){
+  const n=bars.length,res=[];
+  for(let i=0;i<n;i++){
+    const sl=(a,b)=>bars.slice(a,b+1);
+    const mx=(a,b)=>Math.max(...sl(a,b).map(x=>x.high));
+    const mn=(a,b)=>Math.min(...sl(a,b).map(x=>x.low));
+    const tenkan=i>=8?(mx(i-8,i)+mn(i-8,i))/2:null;
+    const kijun=i>=25?(mx(i-25,i)+mn(i-25,i))/2:null;
+    const spanA=(i>=25&&res[i-26]?.tenkan&&res[i-26]?.kijun)?(res[i-26].tenkan+res[i-26].kijun)/2:null;
+    const spanB=i>=77?(mx(i-77,i-26)+mn(i-77,i-26))/2:null;
+    const cldTop=spanA&&spanB?Math.max(spanA,spanB):null;
+    const cldBot=spanA&&spanB?Math.min(spanA,spanB):null;
+    res.push({tenkan,kijun,spanA,spanB,cldTop,cldBot});
+  }
+  return res;
+}
+
+function calcADX(bars,p=14){
+  const n=bars.length,dmP=[],dmM=[],tr=[];
+  for(let i=1;i<n;i++){
+    const up=bars[i].high-bars[i-1].high,dn=bars[i-1].low-bars[i].low;
+    dmP.push(up>dn&&up>0?up:0);dmM.push(dn>up&&dn>0?dn:0);
+    tr.push(Math.max(bars[i].high-bars[i].low,Math.abs(bars[i].high-bars[i-1].close),Math.abs(bars[i].low-bars[i-1].close)));
+  }
+  function ws(arr){let s=arr.slice(0,p).reduce((a,b)=>a+b,0);const out=[s];for(let i=p;i<arr.length;i++){s=s-s/p+arr[i];out.push(s);}return out;}
+  const wTR=ws(tr),wP=ws(dmP),wM=ws(dmM);
+  const diP=wP.map((v,i)=>wTR[i]>0?100*v/wTR[i]:0);
+  const diM=wM.map((v,i)=>wTR[i]>0?100*v/wTR[i]:0);
+  const dx=diP.map((v,i)=>(v+diM[i])>0?100*Math.abs(v-diM[i])/(v+diM[i]):0);
+  let adx=dx.slice(0,p).reduce((a,b)=>a+b,0)/p;const adxArr=[adx];
+  for(let i=p;i<dx.length;i++){adx=(adx*(p-1)+dx[i])/p;adxArr.push(adx);}
+  return{diP,diM,adxArr};
+}
+
+function signalSince(bars,ichi,adxData){
+  const n=bars.length,p=14;let sinceIdx=n-1;
+  for(let i=n-1;i>=0;i--){
+    const li=ichi[i];if(!li||li.cldTop==null)break;
+    const price=bars[i].close;
+    const adxIdx=i-(2*p-1),diIdx=i-p;
+    const adxVal=adxIdx>=0?adxData.adxArr[adxIdx]:null;
+    const dipVal=diIdx>=0?adxData.diP[diIdx]:null;
+    const dimVal=diIdx>=0?adxData.diM[diIdx]:null;
+    const chikouRef=i>=26?bars[i-26].close:null;
+    if(price>li.cldTop&&li.tenkan>li.kijun&&chikouRef&&price>chikouRef&&adxVal>25&&dipVal>dimVal){sinceIdx=i;}else{break;}
+  }
+  return bars[sinceIdx].date;
+}
+
+async function fetchOption(ticker,strike,expDate){
+  const proxies=[u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,u=>`https://corsproxy.io/?${encodeURIComponent(u)}`];
+  const ts=Math.floor(expDate.getTime()/1000);
+  const url=`https://query1.finance.yahoo.com/v7/finance/options/${ticker}?date=${ts}`;
+  for(const px of proxies){
+    try{
+      const r=await fetchT(px(url),9000);if(!r.ok)continue;
+      const j=await r.json();
+      const calls=j?.optionChain?.result?.[0]?.options?.[0]?.calls||[];
+      if(!calls.length)continue;
+      const opt=[...calls].sort((a,b)=>Math.abs(a.strike-strike)-Math.abs(b.strike-strike))[0];
+      return{strike:opt.strike,last:opt.lastPrice,bid:opt.bid,ask:opt.ask};
+    }catch(e){continue;}
+  }
+  return null;
+}
+
+async function processTicker(tkr){
+  let bars;
+  try{bars=await fetchBars(tkr);}
+  catch(e){
+    document.getElementById('sum-'+tkr).className='sum-card waiting';
+    document.getElementById('dot-'+tkr).className='dot waiting';
+    document.getElementById('status-'+tkr).textContent='⚠ Data load failed';
+    document.getElementById('status-'+tkr).className='sum-status waiting';
+    document.getElementById('conds-'+tkr).textContent=e.message+' — hit ↻ Refresh';
+    document.getElementById('cond-detail-'+tkr).innerHTML='<div style="color:#f85149;font-size:12px">⚠ '+e.message+'<br>All data sources failed. Hit ↻ Refresh.</div>';
+    document.getElementById('levels-'+tkr).innerHTML='';
+    return;
+  }
+  const last=bars[bars.length-1],prev=bars[bars.length-2];
+  const price=last.close,chg=price-prev.close,chgPct=(chg/prev.close)*100;
+  const isLive=last.date.toISOString().slice(0,10)===new Date().toISOString().slice(0,10);
+  const ichi=calcIchimoku(bars),li=ichi[ichi.length-1];
+  const aboveCloud=li.cldTop!=null&&price>li.cldTop;
+  const tenkanAboveKj=li.tenkan!=null&&li.kijun!=null&&li.tenkan>li.kijun;
+  const chikouRef=bars.length>=27?bars[bars.length-27].close:null;
+  const chikouOk=chikouRef!=null&&price>chikouRef;
+  const adx=calcADX(bars,14),aLen=adx.adxArr.length;
+  const lastADX=aLen>0?adx.adxArr[aLen-1]:null;
+  const lastDIP=aLen>0?adx.diP[adx.diP.length-1]:null;
+  const lastDIM=aLen>0?adx.diM[adx.diM.length-1]:null;
+  const adxStrong=lastADX!=null&&lastADX>25;
+  const dipWins=lastDIP!=null&&lastDIM!=null&&lastDIP>lastDIM;
+  const allPass=aboveCloud&&tenkanAboveKj&&chikouOk&&adxStrong&&dipWins;
+  const passCount=[aboveCloud,tenkanAboveKj,chikouOk,adxStrong,dipWins].filter(Boolean).length;
+  let sinceDate=null,streakDays=0;
+  if(allPass){sinceDate=signalSince(bars,ichi,adx);streakDays=Math.round((last.date-sinceDate)/86400000);}
+  document.getElementById('sum-'+tkr).className='sum-card '+(allPass?'active':'waiting');
+  document.getElementById('dot-'+tkr).className='dot '+(allPass?'active':'waiting');
+  document.getElementById('price-'+tkr).textContent='$'+price.toFixed(2);
+  const chgEl=document.getElementById('chg-'+tkr);
+  chgEl.textContent=(chg>=0?'+':'')+'$'+chg.toFixed(2)+' ('+chgPct.toFixed(2)+'%) '+(isLive?'· live':'· last close');
+  chgEl.className='sum-chg '+(chg>=0?'up':'down');
+  const stEl=document.getElementById('status-'+tkr);
+  stEl.textContent=allPass?'● SIGNAL ACTIVE':'NO SIGNAL ('+passCount+'/5)';
+  stEl.className='sum-status '+(allPass?'active':'waiting');
+  document.getElementById('conds-'+tkr).textContent=allPass?'All conditions met — buy ATM CALL ~35 DTE':[aboveCloud?'✓ Above cloud':'✗ Above cloud',tenkanAboveKj?'✓ Tenkan>Kijun':'✗ Tenkan>Kijun',adxStrong?'✓ ADX>25':'✗ ADX>25',dipWins?'✓ DI+>DI−':'✗ DI+>DI−'].join(' · ');
+  const sinceEl=document.getElementById('since-'+tkr);
+  if(allPass&&sinceDate){sinceEl.textContent='Signal since '+fmtDate(sinceDate)+' ('+(streakDays===0?'started today':streakDays+' day'+(streakDays!==1?'s':''))+')';sinceEl.className='sum-since '+(streakDays>14?'old':'');}
+  else sinceEl.textContent='';
+  if(allPass){
+    document.getElementById('td-'+tkr).classList.add('visible');
+    const strike=Math.round(price),expiry=nearestFriday35();
+    document.getElementById('td-inst-'+tkr).textContent=tkr+' $'+strike+' CALL';
+    document.getElementById('td-exp-'+tkr).textContent=fmtDate(expiry);
+    if(sinceDate)document.getElementById('td-since-'+tkr).textContent=fmtDate(sinceDate)+' ('+(streakDays===0?'today':streakDays+'d ago')+')';
+    fetchOption(tkr,strike,expiry).then(opt=>{
+      if(opt&&opt.last){const lp=opt.last;document.getElementById('td-opt-'+tkr).innerHTML='$'+lp.toFixed(2)+' <small style="color:#6e7681">bid $'+(opt.bid?.toFixed(2)||'—')+' / ask $'+(opt.ask?.toFixed(2)||'—')+'</small>';document.getElementById('td-cap-'+tkr).textContent='$'+(lp*100).toFixed(0)+' per contract';document.getElementById('td-stop-'+tkr).textContent='Exit if option ≤ $'+(lp*0.50).toFixed(2)+' (−50%)';document.getElementById('td-tgt-'+tkr).textContent='Exit if option ≥ $'+(lp*2.00).toFixed(2)+' (+100%)';}
+      else{document.getElementById('td-opt-'+tkr).textContent='Check broker — ATM call ~35 DTE';document.getElementById('td-cap-'+tkr).textContent='~$'+(price*0.04*100).toFixed(0)+' est.';document.getElementById('td-stop-'+tkr).textContent='−50% from your entry';document.getElementById('td-tgt-'+tkr).textContent='+100% from your entry';}
+    });
+  }
+  function cr(pass,name,valHtml){return '<div class="cond-row"><div class="cicon '+(pass?'pass':'fail')+'">'+(pass?'✓':'✗')+'</div><div><div class="cname">'+name+'</div><div class="cval">'+valHtml+'</div></div></div>';}
+  function cv(v,good){return '<span class="'+(good?'g':'r')+'">'+v+'</span>';}
+  document.getElementById('cond-detail-'+tkr).innerHTML=
+    cr(aboveCloud,'Above Ichimoku Cloud','Price '+cv(fmtD(price),aboveCloud)+' · Cloud top '+cv(fmtD(li.cldTop),aboveCloud))+
+    cr(tenkanAboveKj,'Tenkan > Kijun','Tenkan '+cv(fmtD(li.tenkan),tenkanAboveKj)+' · Kijun <span class="w">'+fmtD(li.kijun)+'</span>')+
+    cr(chikouOk,'Chikou > Price 26 bars ago','Now '+cv(fmtD(price),chikouOk)+' · Ref <span class="w">'+fmtD(chikouRef)+'</span>')+
+    cr(adxStrong,'ADX > 25','ADX '+cv(fmt(lastADX,1),adxStrong))+
+    cr(dipWins,'DI+ > DI−','DI+ '+cv(fmt(lastDIP,1),dipWins)+' · DI− <span class="w">'+fmt(lastDIM,1)+'</span>');
+  document.getElementById('levels-'+tkr).innerHTML=[
+    ['Cloud Top',fmtD(li.cldTop),aboveCloud],['Cloud Bot',fmtD(li.cldBot),false],
+    ['Tenkan (9)',fmtD(li.tenkan),tenkanAboveKj],['Kijun (26)',fmtD(li.kijun),false],
+    ['Chikou ref',fmtD(chikouRef),chikouOk],['ADX',fmt(lastADX,1),adxStrong],
+    ['DI+',fmt(lastDIP,1),dipWins],['DI−',fmt(lastDIM,1),!dipWins],
+  ].map(([n,v,up])=>'<div class="lrow"><span class="lname">'+n+'</span><span class="lval '+(up?'up':'n')+'">'+v+'</span></div>').join('');
+}
+
+async function init(){
+  TICKERS.forEach(t=>{
+    document.getElementById('sum-'+t).className='sum-card loading';
+    document.getElementById('dot-'+t).className='dot loading';
+    document.getElementById('status-'+t).textContent='Loading…';
+    document.getElementById('conds-'+t).textContent='';
+    document.getElementById('td-'+t).className='trade-desk';
+    document.getElementById('cond-detail-'+t).innerHTML='<div class="loading-txt">Loading…</div>';
+    document.getElementById('levels-'+t).innerHTML='<div class="loading-txt">Loading…</div>';
+    document.getElementById('since-'+t).textContent='';
+  });
+  document.getElementById('last-update').textContent='Refreshing…';
+  await Promise.all(TICKERS.map(t=>processTicker(t)));
+  const now=new Date();
+  document.getElementById('last-update').textContent='Refreshed '+now.toLocaleTimeString()+' · '+now.toLocaleDateString();
+  document.getElementById('footer-ts').textContent='Strategy: Ichimoku Full Bull + ADX>25 + DI+>DI− · ATM CALL 35 DTE · Stop −50% · Target +100% · Time exit ≤2 days · OHLC: GitHub Actions (yfinance) · Options: Yahoo Finance';
+}
+init();
+</script>
+</body>
+</html>
