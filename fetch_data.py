@@ -7,7 +7,7 @@ import yfinance as yf
 
 os.makedirs('data', exist_ok=True)
 
-TICKERS = ['SPY', 'QQQ', 'MSFT', 'GLD', 'GOOGL', 'AMD']
+TICKERS = ['SPY', 'QQQ', 'MSFT', 'GLD', 'NVDA', 'SMH', 'AMD']
 
 for ticker in TICKERS:
     try:
