@@ -316,10 +316,10 @@ function queuedAV(fn){
 async function fetchBars(ticker){
   const errors = [];
 
-  // ── 1. Local Python server (most reliable — run Start Dashboard.bat) ───────
+  // ── 1. Local Python server (instant fail on https:// pages, works locally) ──
   try{
     const url = `http://localhost:8765/api/bars/${ticker}`;
-    const r = await fetchT(url, 12000);
+    const r = await fetchT(url, 3000);
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
     const j = await r.json();
     if(j.error) throw new Error(j.error);
