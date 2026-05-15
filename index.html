@@ -413,7 +413,8 @@ async function processTicker(tkr){
   const passCount=[aboveCloud,tenkanAboveKj,chikouOk,adxStrong,dipWins].filter(Boolean).length;
   let sinceDate=null,streakDays=0;
   if(allPass){sinceDate=signalSince(bars,ichi,adx);streakDays=Math.round((last.date-sinceDate)/86400000);}
-  document.getElementById('sum-'+tkr).className='sum-card '+(allPass?'active':'waiting');
+  const isNew = allPass && streakDays <= 3;
+  document.getElementById('sum-'+tkr).className='sum-card '+(allPass?(isNew?'active new-signal':'active'):'waiting');
   document.getElementById('dot-'+tkr).className='dot '+(allPass?'active':'waiting');
   document.getElementById('price-'+tkr).textContent='$'+price.toFixed(2);
   const chgEl=document.getElementById('chg-'+tkr);
